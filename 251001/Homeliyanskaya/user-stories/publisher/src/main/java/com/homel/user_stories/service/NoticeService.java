@@ -2,6 +2,8 @@ package com.homel.user_stories.service;
 
 import com.homel.user_stories.dto.NoticeRequestTo;
 import com.homel.user_stories.dto.NoticeResponseTo;
+import com.homel.user_stories.dto.StoryRequestTo;
+import com.homel.user_stories.dto.StoryResponseTo;
 import com.homel.user_stories.exception.EntityNotFoundException;
 import com.homel.user_stories.mapper.NoticeMapper;
 import com.homel.user_stories.model.Notice;
@@ -9,64 +11,63 @@ import com.homel.user_stories.model.Story;
 import com.homel.user_stories.repository.NoticeRepository;
 import com.homel.user_stories.repository.StoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-@Service
+@Component
 public class NoticeService {
-    private final NoticeRepository noticeRepository;
-    private final StoryRepository storyRepository;
+
+    private final RestTemplate restTemplate;
 
     @Autowired
-    public NoticeService(NoticeRepository noticeRepository, StoryRepository storyRepository) {
-        this.storyRepository = storyRepository;
-        this.noticeRepository = noticeRepository;
+    public NoticeService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
     }
 
+    private final String BASE_URL = "http://localhost:24130/api/v1.0/notices";
+
     public NoticeResponseTo createNotice(NoticeRequestTo noticeRequest) {
-        Notice notice = NoticeMapper.INSTANCE.toEntity(noticeRequest);
-
-        Story story = storyRepository.findById(noticeRequest.getStoryId())
-                .orElseThrow(() -> new EntityNotFoundException("Story not found"));
-
-        notice.setStory(story);
-
-        Notice savedNotice = noticeRepository.save(notice);
-        return NoticeMapper.INSTANCE.toResponse(savedNotice);
+        String url = BASE_URL; // URL для создания записи
+        return restTemplate.postForObject(url, noticeRequest, NoticeResponseTo.class);
     }
 
     public NoticeResponseTo getNotice(Long id) {
-        return noticeRepository.findById(id)
-                .map(NoticeMapper.INSTANCE::toResponse)
-                .orElseThrow(() -> new EntityNotFoundException("Notice not found"));
+        String url = BASE_URL + "/" + id; // URL для получения записи по ID
+        return restTemplate.getForObject(url, NoticeResponseTo.class);
     }
 
     public List<NoticeResponseTo> getAllNotices() {
-        return noticeRepository.findAll().stream()
-                .map(NoticeMapper.INSTANCE::toResponse)
-                .toList();
+        String url = BASE_URL; // URL для получения всех записей
+        NoticeResponseTo[] noticesArray = restTemplate.getForObject(url, NoticeResponseTo[].class);
+        return noticesArray != null ? Arrays.asList(noticesArray) : Collections.emptyList();
     }
 
     public void deleteNotice(Long id) {
-        noticeRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Notice with id " + id + " not found"));
-
-        noticeRepository.deleteById(id);
+        String url = BASE_URL + "/" + id; // URL для удаления записи по ID
+        restTemplate.delete(url);
     }
 
     public NoticeResponseTo updateNotice(NoticeRequestTo noticeRequest) {
-        Notice existingNotice = noticeRepository.findById(noticeRequest.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Notice not found"));
+        String url = BASE_URL;
+        ResponseEntity<NoticeResponseTo> responseEntity = restTemplate.exchange(
+                url,
+                HttpMethod.PUT,
+                new HttpEntity<>(noticeRequest),
+                NoticeResponseTo.class
+        );
 
-        Story story = storyRepository.findById(noticeRequest.getStoryId())
-                .orElseThrow(() -> new EntityNotFoundException("Story not found"));
+        // Получаем ответ в виде объекта NoticeResponseTo
+        NoticeResponseTo noticeResponse = responseEntity.getBody();
 
-        existingNotice.setStory(story);
-        existingNotice.setContent(noticeRequest.getContent());
-
-        Notice updatedNotice = noticeRepository.save(existingNotice);
-
-        return NoticeMapper.INSTANCE.toResponse(updatedNotice);
+        // Возвращаем полученный ответ
+        return noticeResponse;
     }
 }

@@ -30,4 +30,8 @@ public class Notice {
 
     @Column(nullable = false)
     private String content;
+
+    @Column(name = "state")
+    private String state;
+
 }

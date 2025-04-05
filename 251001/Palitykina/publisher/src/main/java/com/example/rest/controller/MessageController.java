@@ -47,7 +47,6 @@ public class MessageController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable long id) {
-        boolean deleted = messageService.delete(id);
-        if (!deleted) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+         messageService.delete(id);
     }
 }

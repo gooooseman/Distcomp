@@ -14,7 +14,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -23,6 +25,7 @@ import java.util.List;
 @AllArgsConstructor
 public class MessageService {
     private final DiscussionClient discussionClient;
+
     private final StoryRepo storyRepo;
 
     public List<MessageResponseTo> getAll() {
@@ -47,11 +50,16 @@ public class MessageService {
         return message;
     }
 
-    public boolean delete(long id) {
+    public void delete(long id) {
         Story story = storyRepo.findByMessagesContaining(id);
-        story.getMessages().remove(id);
-        storyRepo.update(story);
-        return discussionClient.deleteMessage(id);
+        if (story != null) {
+            story.getMessages().remove(id);
+            storyRepo.update(story);
+        }try {
+            discussionClient.deleteMessage(id);
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw  new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
     }
 
 }

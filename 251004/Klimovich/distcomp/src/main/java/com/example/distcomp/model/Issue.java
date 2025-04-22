@@ -13,16 +13,28 @@ import java.sql.Timestamp;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "tbl_issue")
 public class Issue {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private long id;
 
+    @Column(length = 64, unique = true, nullable = false)
+    @Size(min = 2, max = 64)
     private String title;
 
+    @Column(length = 2048, nullable = false)
+    @Size(min = 4, max = 2048)
     private String content;
 
+    @Column(nullable = false)
     private Timestamp created;
 
+    @Column(nullable = false)
     private Timestamp modified;
 
-    private long writerId;
+    @ManyToOne
+    @JoinColumn(name = "writer_id")
+    private Writer writer;
 }

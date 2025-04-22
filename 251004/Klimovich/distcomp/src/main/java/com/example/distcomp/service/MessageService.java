@@ -4,23 +4,35 @@ import com.example.distcomp.dto.MessageRequestTo;
 import com.example.distcomp.dto.MessageResponseTo;
 import com.example.distcomp.exception.ServiceException;
 import com.example.distcomp.mapper.MessageMapper;
+import com.example.distcomp.model.Issue;
 import com.example.distcomp.model.Message;
+import com.example.distcomp.repository.IssueRepository;
 import com.example.distcomp.repository.MessageRepository;
 import com.example.distcomp.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class MessageService {
     private final MessageRepository messageRepository;
+    private final IssueRepository issueRepository;
     private final MessageMapper messageMapper;
 
     public MessageResponseTo createMessage(MessageRequestTo request) {
         validateMessageRequest(request);
-        return messageMapper.toResponse(messageRepository.save(messageMapper.toEntity(request)));
+        Message entity = messageMapper.toEntity(request);
+        entity.setIssue(issueRepository.getReferenceById(request.getIssueId()));
+        try{
+            return messageMapper.toResponse(messageRepository.save(entity));
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public List<MessageResponseTo> getAllMessages() {
@@ -39,7 +51,13 @@ public class MessageService {
         if (!messageRepository.existsById(entity.getId())) {
             throw new ServiceException("Message not found with id: " + entity.getId(), 404);
         }
-        return messageMapper.toResponse(messageRepository.save(entity));
+        entity.setIssue(issueRepository.getReferenceById(request.getIssueId()));
+        try{
+            return messageMapper.toResponse(messageRepository.save(entity));
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public void deleteMessage(Long id) {

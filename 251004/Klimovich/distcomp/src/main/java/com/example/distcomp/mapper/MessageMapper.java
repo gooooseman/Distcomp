@@ -12,6 +12,7 @@ public interface MessageMapper {
 
     Message toEntity(MessageRequestTo request);
 
+    @Mapping(target = "issueId", source = "entity.issue.id")
     MessageResponseTo toResponse(Message entity);
 
     List<Message> listToEntity(List<MessageRequestTo> dtoList);

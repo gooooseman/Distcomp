@@ -6,10 +6,14 @@ import com.example.distcomp.exception.ServiceException;
 import com.example.distcomp.mapper.IssueMapper;
 import com.example.distcomp.model.Issue;
 import com.example.distcomp.repository.IssueRepository;
+import com.example.distcomp.repository.WriterRepository;
 import com.example.distcomp.utils.ValidationUtils;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
 import java.util.List;
 
 
@@ -17,12 +21,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IssueService {
     private final IssueRepository issueRepository;
-
+    private final WriterRepository writerRepository;
     private final IssueMapper issueMapper;
 
     public IssueResponseTo createIssue(IssueRequestTo request) {
         validateIssueRequest(request);
-        return issueMapper.toResponse(issueRepository.save(issueMapper.toEntity(request)));
+        Issue entity = issueMapper.toEntity(request);
+        entity.setWriter(writerRepository.getReferenceById(request.getWriterId()));
+        entity.setCreated(new Timestamp(System.currentTimeMillis()));
+        entity.setModified(new Timestamp(System.currentTimeMillis()));
+        try{
+            return issueMapper.toResponse(issueRepository.save(entity));
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public List<IssueResponseTo> getAllIssues() {
@@ -38,10 +51,17 @@ public class IssueService {
     public IssueResponseTo updateIssue(IssueRequestTo request) {
         validateIssueRequest(request);
         Issue entity = issueMapper.toEntity(request);
-        if (!issueRepository.existsById(entity.getId())) {
-            throw new ServiceException("Issue not found with id: " + entity.getId(), 404);
+        Issue existingIssue = issueRepository.findById(request.getId())
+                .orElseThrow(() -> new ServiceException("Issue not found with id: " + request.getId(), 404));
+        entity.setWriter(writerRepository.getReferenceById(request.getWriterId()));
+        entity.setCreated(existingIssue.getCreated());
+        entity.setModified(new Timestamp(System.currentTimeMillis()));
+        try{
+            return issueMapper.toResponse(issueRepository.save(entity));
         }
-        return issueMapper.toResponse(issueRepository.save(entity));
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public void deleteIssue(Long id) {

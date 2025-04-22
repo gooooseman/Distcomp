@@ -11,6 +11,7 @@ import java.util.List;
 public interface IssueMapper {
 
     Issue toEntity(IssueRequestTo request);
+    @Mapping(target = "writerId", source = "entity.writer.id")
     IssueResponseTo toResponse(Issue entity);
 
     List<Issue> listToEntity(List<IssueRequestTo> dtoList);

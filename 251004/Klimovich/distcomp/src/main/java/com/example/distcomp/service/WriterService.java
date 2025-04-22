@@ -7,6 +7,7 @@ import com.example.distcomp.model.Writer;
 import com.example.distcomp.repository.WriterRepository;
 import com.example.distcomp.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -19,7 +20,12 @@ public class WriterService {
 
     public WriterResponseTo createWriter(WriterRequestTo request) {
         validateWriterRequest(request);
-        return writerMapper.toResponse(writerRepository.save(writerMapper.toEntity(request)));
+        try{
+            return writerMapper.toResponse(writerRepository.save(writerMapper.toEntity(request)));
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public List<WriterResponseTo> getAllWriters() {
@@ -38,7 +44,12 @@ public class WriterService {
         if (!writerRepository.existsById(entity.getId())) {
             throw new ServiceException("Writer not found with id: " + entity.getId(), 404);
         }
-        return writerMapper.toResponse(writerRepository.save(entity));
+        try{
+            return writerMapper.toResponse(writerRepository.save(entity));
+        }
+        catch (DataIntegrityViolationException e) {
+            throw new ServiceException("Data integrity violation", 403);
+        }
     }
 
     public void deleteWriter(Long id) {

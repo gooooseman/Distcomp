@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -37,4 +39,21 @@ public class Issue {
     @ManyToOne
     @JoinColumn(name = "writer_id")
     private Writer writer;
+
+    @ManyToMany
+    @JoinTable(
+            name = "tbl_issue_label",
+            joinColumns = @JoinColumn(name = "issue_id"),
+            inverseJoinColumns = @JoinColumn(name = "label_id")
+    )
+    private Set<Label> labels = new HashSet<>();
+    public void addLabel(Label label) {
+        this.labels.add(label);
+        label.getIssues().add(this);
+    }
+
+    public void removeLabel(Label label) {
+        this.labels.remove(label);
+        label.getIssues().remove(this);
+    }
 }

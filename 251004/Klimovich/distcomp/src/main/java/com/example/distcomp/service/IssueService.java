@@ -5,7 +5,9 @@ import com.example.distcomp.dto.IssueResponseTo;
 import com.example.distcomp.exception.ServiceException;
 import com.example.distcomp.mapper.IssueMapper;
 import com.example.distcomp.model.Issue;
+import com.example.distcomp.model.Label;
 import com.example.distcomp.repository.IssueRepository;
+import com.example.distcomp.repository.LabelRepository;
 import com.example.distcomp.repository.WriterRepository;
 import com.example.distcomp.utils.ValidationUtils;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,11 +24,16 @@ import java.util.List;
 public class IssueService {
     private final IssueRepository issueRepository;
     private final WriterRepository writerRepository;
+    private final LabelRepository labelRepository;
     private final IssueMapper issueMapper;
 
     public IssueResponseTo createIssue(IssueRequestTo request) {
         validateIssueRequest(request);
         Issue entity = issueMapper.toEntity(request);
+        for (Label leb : entity.getLabels())
+        {
+            labelRepository.save(leb);
+        }
         entity.setWriter(writerRepository.getReferenceById(request.getWriterId()));
         entity.setCreated(new Timestamp(System.currentTimeMillis()));
         entity.setModified(new Timestamp(System.currentTimeMillis()));
@@ -51,6 +58,10 @@ public class IssueService {
     public IssueResponseTo updateIssue(IssueRequestTo request) {
         validateIssueRequest(request);
         Issue entity = issueMapper.toEntity(request);
+        for (Label leb : entity.getLabels())
+        {
+            labelRepository.save(leb);
+        }
         Issue existingIssue = issueRepository.findById(request.getId())
                 .orElseThrow(() -> new ServiceException("Issue not found with id: " + request.getId(), 404));
         entity.setWriter(writerRepository.getReferenceById(request.getWriterId()));

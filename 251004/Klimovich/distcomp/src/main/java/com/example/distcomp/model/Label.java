@@ -27,6 +27,9 @@ public class Label {
     @Size(min = 2, max = 32)
     private String name;
 
+
     @ManyToMany(mappedBy = "labels")
     private Set<Issue> issues = new HashSet<>();
+
+
 }

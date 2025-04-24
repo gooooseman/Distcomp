@@ -1,6 +1,10 @@
 package com.example.distcomp.dto;
 
+import com.example.distcomp.model.Label;
+
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IssueRequestTo {
     private long id;
@@ -12,19 +16,17 @@ public class IssueRequestTo {
     private Timestamp created;
 
     private Timestamp modified;
-
+    private List<String> labels = new ArrayList<>();
     private long writerId;
 
-    public IssueRequestTo() {
-    }
-
-    public IssueRequestTo(long id, String title, String content, Timestamp created, Timestamp modified, long writerId){
+    public IssueRequestTo(long id, String title, String content, Timestamp created, Timestamp modified, long writerId, Object labels){
         this.id = id;
         this.title = title;
         this.content = content;
         this.created = created;
         this.modified = modified;
         this.writerId = writerId;
+        setLabels(labels);
     }
 
 
@@ -74,5 +76,24 @@ public class IssueRequestTo {
 
     public void setWriterId(long writerId) {
         this.writerId = writerId;
+    }
+
+    public List<String> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(Object labels) {
+        this.labels.clear();
+
+        if (labels == null) {
+            return;
+        }
+        if (labels instanceof String) {
+            this.labels = List.of((String) labels);
+        } else if (labels instanceof List) {
+            this.labels = (List<String>) labels;
+        } else {
+            throw new IllegalArgumentException("Labels must be a String or List<String>");
+        }
     }
 }

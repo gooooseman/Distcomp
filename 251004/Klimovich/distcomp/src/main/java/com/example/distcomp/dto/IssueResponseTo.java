@@ -1,6 +1,8 @@
 package com.example.distcomp.dto;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
 
 public class IssueResponseTo {
     private long id;
@@ -13,18 +15,19 @@ public class IssueResponseTo {
 
     private Timestamp modified;
 
+    private List<String> labels = new ArrayList<>();
     private long writerId;
 
     public IssueResponseTo() {
     }
 
-    public IssueResponseTo(long id, String title, String content, Timestamp created, Timestamp modified, long writerId){
+    public IssueResponseTo(long id, String title, String content, Timestamp created, Timestamp modified, List<String> labels, long writerId){
         this.id = id;
         this.title = title;
         this.content = content;
         this.created = created;
         this.modified = modified;
-        this.writerId = writerId;
+        this.labels = labels;
     }
 
 
@@ -74,6 +77,14 @@ public class IssueResponseTo {
 
     public void setWriterId(long writerId) {
         this.writerId = writerId;
+    }
+
+    public List<String> getLabels() {
+        return labels;
+    }
+
+    public void setLabels(List<String> labels) {
+        this.labels = labels;
     }
 }
 

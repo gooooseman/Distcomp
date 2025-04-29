@@ -12,7 +12,7 @@ namespace rv_lab_1.controllers
     {
         private readonly ITagService _tagService = tagService;
         [HttpGet("{id:long}")]
-        public async Task<TagResponseTo> GetByIdAsync(long id)
+        public async Task<TagResponseTo?> GetByIdAsync(long id)
         {
             return await _tagService.GetByIdAsync(id);
         }
@@ -36,6 +36,12 @@ namespace rv_lab_1.controllers
         public async Task<ActionResult<TagRequestTo>> Put([FromBody] Tag requestTo)
         {
             var res = await _tagService.UpdateAsync(requestTo.Id, new TagRequestTo { Name = requestTo.Name});
+            return Ok(res);
+        }
+        [HttpPut("{id}")]
+        public async Task<ActionResult<TagRequestTo>> PutId(int id, [FromBody] TagRequestTo requestTo)
+        {
+            var res = await _tagService.UpdateAsync(id, requestTo);
             return Ok(res);
         }
 

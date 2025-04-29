@@ -16,7 +16,7 @@ namespace rv_lab_1.controllers
         private readonly INoteService _noteService = noteService;
 
         [HttpGet("{id:long}")]
-        public async Task<NoteResponseTo> GetByIdAsync(long id)
+        public async Task<NoteResponseTo?> GetByIdAsync(long id)
         {
             return await _noteService.GetByIdAsync(id);
         }
@@ -32,7 +32,7 @@ namespace rv_lab_1.controllers
         {
             var res = await _noteService.CreateAsync(requestTo);
             if (res == null)
-                return BadRequest();
+                return StatusCode(403);
             return Created(string.Empty, res);
         }
 
@@ -41,6 +41,12 @@ namespace rv_lab_1.controllers
         {
             var res = await _noteService.UpdateAsync(requestTo.Id, new NoteRequestTo 
                 { Content = requestTo.Content, StoryId = requestTo.StoryId});
+            return Ok(res);
+        }
+        [HttpPut("{id}")]
+        public async Task<ActionResult<NoteRequestTo>> PutId(int id, [FromBody] NoteRequestTo requestTo)
+        {
+            var res = await _noteService.UpdateAsync(id, requestTo);
             return Ok(res);
         }
 

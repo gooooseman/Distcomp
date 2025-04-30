@@ -1,9 +1,12 @@
-package com.example.distcomp_1.controller;
+package com.example.distcomp_2.controller;
 
-import com.example.distcomp_1.mapper.MessageDto;
-import com.example.distcomp_1.mdoel.Message;
-import com.example.distcomp_1.repository.MessageRepository;
-import com.example.distcomp_1.service.MessageService;
+import com.example.distcomp_2.dto.MessageCreateDto;
+import com.example.distcomp_2.dto.MessageResponseDto;
+import com.example.distcomp_2.mapper.MessageMapper;
+import com.example.distcomp_2.model.Message;
+import com.example.distcomp_2.repository.MessageRepository;
+import com.example.distcomp_2.service.MessageService;
+import com.example.distcomp_2.service.NewsService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -25,47 +28,49 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/v1.0")
 public class MessageController {
 
-    private final MessageDto messageDto;
+    private final MessageMapper messageMapper;
     private final MessageRepository messageRepository;
     private final MessageService messageService;
+    private final NewsService newsService;
 
     @Autowired
-    public MessageController(MessageDto messageDto, MessageRepository messageRepository, MessageService messageService) {
-        this.messageDto = messageDto;
+    public MessageController(MessageMapper messageMapper, MessageRepository messageRepository, MessageService messageService, NewsService newsService) {
+        this.messageMapper = messageMapper;
         this.messageRepository = messageRepository;
         this.messageService = messageService;
+        this.newsService = newsService;
     }
     @GetMapping("/messages")
     @ResponseStatus(HttpStatus.OK)
-    public List<Message.Out> getMarkers() {
-        return messageRepository.getMessages()
-                .stream()
-                .map(messageDto::Out)
-                .collect(Collectors.toList());
+    public List<MessageResponseDto> getMarkers() {
+        return messageService.findAll().stream().map(messageMapper::toDto).collect(Collectors.toList());
     }
 
     @PostMapping("/messages")
     @ResponseStatus(HttpStatus.CREATED)
-    public Message.Out createMarker(@RequestBody @Valid Message.In inputDto) {
-        Message entity = messageDto.In(inputDto);
+    public ResponseEntity<MessageResponseDto> createMarker(@RequestBody @Valid MessageCreateDto inputDto) {
+        Message entity = messageMapper.toEntity(inputDto, newsService.findById(inputDto.getNewsId()));
+        if (newsService.findById(inputDto.getNewsId()) == null) {
+            return new ResponseEntity<>(messageMapper.toDto(entity), HttpStatus.BAD_REQUEST);
+        }
         Message saved = messageService.save(entity);
-        return messageDto.Out(saved);
+        return new ResponseEntity<>(messageMapper.toDto(saved), HttpStatus.CREATED);
     }
 
     @GetMapping("/messages/{id}")
-    public Message.Out getMarkerById(@PathVariable Long id) {
-        return messageDto.Out(messageService.findById(id));
+    public MessageResponseDto getMarkerById(@PathVariable Long id) {
+        return messageMapper.toDto(messageService.findById(id));
     }
 
     @PutMapping("/messages")
-    public ResponseEntity<Message.Out> updateMarker(@RequestBody @Valid Message.In in) {
+    public ResponseEntity<MessageResponseDto> updateMarker(@RequestBody @Valid MessageCreateDto in) {
         Message message = messageService.findById(in.getId());
         if (message == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } else {
-            Message newMessage = messageDto.In(in);
+            Message newMessage = messageMapper.toEntity(in, newsService.findById(in.getNewsId()));
             Message updated = messageService.update(newMessage);
-            return ResponseEntity.ok(messageDto.Out(updated));
+            return ResponseEntity.ok(messageMapper.toDto(updated));
         }
     }
 

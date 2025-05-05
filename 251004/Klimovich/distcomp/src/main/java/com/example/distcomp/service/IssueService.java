@@ -10,12 +10,17 @@ import com.example.distcomp.repository.IssueRepository;
 import com.example.distcomp.repository.LabelRepository;
 import com.example.distcomp.repository.WriterRepository;
 import com.example.distcomp.utils.ValidationUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Timestamp;
+import java.util.concurrent.TimeUnit;
 import java.util.List;
 
 
@@ -26,6 +31,11 @@ public class IssueService {
     private final WriterRepository writerRepository;
     private final LabelRepository labelRepository;
     private final IssueMapper issueMapper;
+    ObjectMapper objectMapper = new ObjectMapper();
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final String CACHE_NAME = "issues";
+    private static final long CACHE_TTL_MINUTES = 30;
 
     public IssueResponseTo createIssue(IssueRequestTo request) {
         validateIssueRequest(request);
@@ -38,21 +48,51 @@ public class IssueService {
         entity.setCreated(new Timestamp(System.currentTimeMillis()));
         entity.setModified(new Timestamp(System.currentTimeMillis()));
         try{
-            return issueMapper.toResponse(issueRepository.save(entity));
+            entity = issueRepository.save(entity);
+            IssueResponseTo response = issueMapper.toResponse(entity);
+            redisTemplate.delete("allIssues");
+            redisTemplate.opsForValue().set(
+                    "issue:" + entity.getId(),
+                    response,
+                    CACHE_TTL_MINUTES,
+                    TimeUnit.MINUTES
+            );
+            return response;
+
         }
         catch (DataIntegrityViolationException e) {
             throw new ServiceException("Data integrity violation", 403);
         }
     }
-
     public List<IssueResponseTo> getAllIssues() {
-        return issueMapper.listToResponse(issueRepository.findAll());
-    }
+        String key = "allIssues";
+        Object cached = redisTemplate.opsForValue().get(key);
 
+        if (cached != null) {
+            return objectMapper.convertValue(cached, new TypeReference<List<IssueResponseTo>>() {});
+        }
+
+        List<IssueResponseTo> responseList = issueMapper.listToResponse(issueRepository.findAll());
+        redisTemplate.opsForValue().set(key, responseList, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+        return responseList;
+    }
     public IssueResponseTo getIssueById(Long id) {
+        String key = "issue:" + id;
+        Object cached = redisTemplate.opsForValue().get(key);
+
+        if (cached != null) {
+            return objectMapper.convertValue(cached, IssueResponseTo.class);
+        }
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new ServiceException("Issue not found with id: " + id, 404));
-        return issueMapper.toResponse(issue);
+        IssueResponseTo response = issueMapper.toResponse(issue);
+        redisTemplate.opsForValue().set(
+                "issue:" + issue.getId(),
+                response,
+                CACHE_TTL_MINUTES,
+                TimeUnit.MINUTES
+        );
+        return response;
     }
 
     public IssueResponseTo updateIssue(IssueRequestTo request) {
@@ -68,7 +108,16 @@ public class IssueService {
         entity.setCreated(existingIssue.getCreated());
         entity.setModified(new Timestamp(System.currentTimeMillis()));
         try{
-            return issueMapper.toResponse(issueRepository.save(entity));
+            entity = issueRepository.save(entity);
+            IssueResponseTo response = issueMapper.toResponse(entity);
+            redisTemplate.delete("allIssues");
+            redisTemplate.opsForValue().set(
+                    "issue:" + entity.getId(),
+                    response,
+                    CACHE_TTL_MINUTES,
+                    TimeUnit.MINUTES
+            );
+            return response;
         }
         catch (DataIntegrityViolationException e) {
             throw new ServiceException("Data integrity violation", 403);
@@ -80,6 +129,8 @@ public class IssueService {
             throw new ServiceException("Issue not found with id: " + id, 404);
         }
         issueRepository.deleteById(id);
+        redisTemplate.delete("issue:" + id);
+        redisTemplate.delete("allIssues");
     }
     private void validateIssueRequest(IssueRequestTo request) {
         ValidationUtils.validateNotNull(request, "Issue");

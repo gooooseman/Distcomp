@@ -1,4 +1,4 @@
-package com.example.distcomp.kafka;
+package com.example.distcomp.config;
 
 import com.example.distcomp.dto.MessageRequestKafka;
 import org.apache.kafka.clients.producer.ProducerConfig;

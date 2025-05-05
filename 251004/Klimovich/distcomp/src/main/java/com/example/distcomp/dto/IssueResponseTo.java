@@ -1,9 +1,11 @@
 package com.example.distcomp.dto;
 
+import lombok.Data;
+
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
+@Data
 public class IssueResponseTo {
     private long id;
 

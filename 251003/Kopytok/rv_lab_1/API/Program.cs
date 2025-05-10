@@ -1,26 +1,34 @@
+using API.Kafka;
+using API.Redis;
 using Application.abstractions;
 using Application.services;
 using Application.Services;
 using Database;
+using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IEditorService, EditorService>();
-builder.Services.AddScoped<INoteService, NoteService>();
 builder.Services.AddScoped<IStoryService, StoryService>();
 builder.Services.AddScoped<ITagService, TagService>();
-builder.Services.AddScoped(typeof(IRepository<>), typeof(InMemoryRepository<>));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddSingleton<NoteMessageProducer>();
+builder.Services.AddSingleton<NoteResponseListener>();
+builder.Services.AddHostedService<NoteMessageConsumer>();
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect("localhost:6358"));
+builder.Services.AddSingleton<NoteCacheService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

@@ -14,22 +14,37 @@ import java.util.List;
 @Service
 public class LabelService {
     private final LabelRepository labelRepository;
+    private final RedisCacheService cacheService;
+
+    private static final String LABEL_CACHE_PREFIX = "label::";
 
     @Autowired
-    public LabelService(LabelRepository labelRepository) {
+    public LabelService(LabelRepository labelRepository, RedisCacheService cacheService) {
         this.labelRepository = labelRepository;
+        this.cacheService = cacheService;
     }
 
     public LabelResponseTo createLabel(LabelRequestTo labelRequest) {
         Label label = LabelMapper.INSTANCE.toEntity(labelRequest);
         Label savedLabel = labelRepository.save(label);
-        return LabelMapper.INSTANCE.toResponse(savedLabel);
+        LabelResponseTo response = LabelMapper.INSTANCE.toResponse(savedLabel);
+        cacheService.put(LABEL_CACHE_PREFIX + savedLabel.getId(), response);
+        return response;
     }
 
     public LabelResponseTo getLabel(Long id) {
-        return labelRepository.findById(id)
+        String cacheKey = LABEL_CACHE_PREFIX + id;
+        LabelResponseTo cached = cacheService.get(cacheKey, LabelResponseTo.class);
+        if (cached != null) {
+            return cached;
+        }
+
+        LabelResponseTo response = labelRepository.findById(id)
                 .map(LabelMapper.INSTANCE::toResponse)
                 .orElseThrow(() -> new EntityNotFoundException("Label not found"));
+
+        cacheService.put(cacheKey, response);
+        return response;
     }
 
     public List<LabelResponseTo> getAllLabels() {
@@ -43,6 +58,7 @@ public class LabelService {
                 .orElseThrow(() -> new EntityNotFoundException("Label with id " + id + " not found"));
 
         labelRepository.deleteById(id);
+        cacheService.evict(LABEL_CACHE_PREFIX + id);
     }
 
     public LabelResponseTo updateLabel(LabelRequestTo labelRequest) {
@@ -50,9 +66,10 @@ public class LabelService {
                 .orElseThrow(() -> new EntityNotFoundException("Label not found"));
 
         existingLabel.setName(labelRequest.getName());
-
         Label updatedLabel = labelRepository.save(existingLabel);
 
-        return LabelMapper.INSTANCE.toResponse(updatedLabel);
+        LabelResponseTo response = LabelMapper.INSTANCE.toResponse(updatedLabel);
+        cacheService.put(LABEL_CACHE_PREFIX + updatedLabel.getId(), response);
+        return response;
     }
 }

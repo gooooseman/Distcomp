@@ -2,14 +2,10 @@ package com.homel.user_stories.service;
 
 import com.homel.user_stories.dto.NoticeRequestTo;
 import com.homel.user_stories.dto.NoticeResponseTo;
-import com.homel.user_stories.dto.StoryRequestTo;
-import com.homel.user_stories.dto.StoryResponseTo;
 import com.homel.user_stories.exception.EntityNotFoundException;
 import com.homel.user_stories.mapper.NoticeMapper;
 import com.homel.user_stories.model.Notice;
-import com.homel.user_stories.model.Story;
 import com.homel.user_stories.repository.NoticeRepository;
-import com.homel.user_stories.repository.StoryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -26,33 +22,64 @@ import java.util.List;
 public class NoticeService {
 
     private final RestTemplate restTemplate;
+    private final RedisCacheService cacheService;
+
+    private static final String NOTICE_CACHE_PREFIX = "notice::";
 
     @Autowired
-    public NoticeService(RestTemplate restTemplate) {
+    public NoticeService(RestTemplate restTemplate, RedisCacheService cacheService) {
         this.restTemplate = restTemplate;
+        this.cacheService = cacheService;
     }
 
     private final String BASE_URL = "http://localhost:24130/api/v1.0/notices";
 
     public NoticeResponseTo createNotice(NoticeRequestTo noticeRequest) {
-        String url = BASE_URL; // URL для создания записи
-        return restTemplate.postForObject(url, noticeRequest, NoticeResponseTo.class);
+        String url = BASE_URL;
+        NoticeResponseTo createdNotice = restTemplate.postForObject(url, noticeRequest, NoticeResponseTo.class);
+
+        cacheService.put(NOTICE_CACHE_PREFIX + createdNotice.getId(), createdNotice);
+        return createdNotice;
     }
 
     public NoticeResponseTo getNotice(Long id) {
-        String url = BASE_URL + "/" + id; // URL для получения записи по ID
-        return restTemplate.getForObject(url, NoticeResponseTo.class);
+        String cacheKey = NOTICE_CACHE_PREFIX + id;
+        NoticeResponseTo cached = cacheService.get(cacheKey, NoticeResponseTo.class);
+        if (cached != null) {
+            return cached;
+        }
+
+        String url = BASE_URL + "/" + id;
+        NoticeResponseTo notice = restTemplate.getForObject(url, NoticeResponseTo.class);
+
+        if (notice != null) {
+            cacheService.put(cacheKey, notice);
+        } else {
+            throw new EntityNotFoundException("Notice not found");
+        }
+
+        return notice;
     }
 
     public List<NoticeResponseTo> getAllNotices() {
-        String url = BASE_URL; // URL для получения всех записей
+        String url = BASE_URL;
         NoticeResponseTo[] noticesArray = restTemplate.getForObject(url, NoticeResponseTo[].class);
-        return noticesArray != null ? Arrays.asList(noticesArray) : Collections.emptyList();
+        List<NoticeResponseTo> notices = noticesArray != null ? Arrays.asList(noticesArray) : Collections.emptyList();
+
+        if (!notices.isEmpty()) {
+            for (NoticeResponseTo notice : notices) {
+                cacheService.put(NOTICE_CACHE_PREFIX + notice.getId(), notice);
+            }
+        }
+
+        return notices;
     }
 
     public void deleteNotice(Long id) {
-        String url = BASE_URL + "/" + id; // URL для удаления записи по ID
+        String url = BASE_URL + "/" + id;
         restTemplate.delete(url);
+
+        cacheService.evict(NOTICE_CACHE_PREFIX + id);
     }
 
     public NoticeResponseTo updateNotice(NoticeRequestTo noticeRequest) {
@@ -64,10 +91,12 @@ public class NoticeService {
                 NoticeResponseTo.class
         );
 
-        // Получаем ответ в виде объекта NoticeResponseTo
-        NoticeResponseTo noticeResponse = responseEntity.getBody();
+        NoticeResponseTo updatedNotice = responseEntity.getBody();
 
-        // Возвращаем полученный ответ
-        return noticeResponse;
+        if (updatedNotice != null) {
+            cacheService.put(NOTICE_CACHE_PREFIX + updatedNotice.getId(), updatedNotice);
+        }
+
+        return updatedNotice;
     }
 }

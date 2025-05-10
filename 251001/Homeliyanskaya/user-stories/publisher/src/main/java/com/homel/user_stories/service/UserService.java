@@ -14,28 +14,51 @@ import java.util.List;
 @Service
 public class UserService {
     private final UserRepository userRepository;
+    private final RedisCacheService cacheService;
+
+    private static final String USER_CACHE_PREFIX = "user::";
 
     @Autowired
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, RedisCacheService cacheService) {
         this.userRepository = userRepository;
+        this.cacheService = cacheService;
     }
 
     public UserResponseTo createUser(UserRequestTo userRequest) {
         User user = UserMapper.INSTANCE.toEntity(userRequest);
         User savedUser = userRepository.save(user);
+        
+        cacheService.put(USER_CACHE_PREFIX + savedUser.getId(), UserMapper.INSTANCE.toResponse(savedUser));
+
         return UserMapper.INSTANCE.toResponse(savedUser);
     }
 
     public UserResponseTo getUser(Long id) {
-        return userRepository.findById(id)
-                .map(UserMapper.INSTANCE::toResponse)
+        String cacheKey = USER_CACHE_PREFIX + id;
+        UserResponseTo cachedUser = cacheService.get(cacheKey, UserResponseTo.class);
+
+        if (cachedUser != null) {
+            return cachedUser;
+        }
+
+        User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        UserResponseTo userResponse = UserMapper.INSTANCE.toResponse(user);
+
+        cacheService.put(cacheKey, userResponse);
+
+        return userResponse;
     }
 
     public List<UserResponseTo> getAllUsers() {
-        return userRepository.findAll().stream()
+        List<User> users = userRepository.findAll();
+        List<UserResponseTo> usersResponse = users.stream()
                 .map(UserMapper.INSTANCE::toResponse)
                 .toList();
+
+
+        return usersResponse;
     }
 
     public void deleteUser(Long id) {
@@ -43,6 +66,8 @@ public class UserService {
                 .orElseThrow(() -> new EntityNotFoundException("User with id " + id + " not found"));
 
         userRepository.deleteById(id);
+
+        cacheService.evict(USER_CACHE_PREFIX + id);
     }
 
     public UserResponseTo updateUser(UserRequestTo userRequest) {
@@ -55,6 +80,8 @@ public class UserService {
         existingUser.setLastname(userRequest.getLastname());
 
         User updatedUser = userRepository.save(existingUser);
+
+        cacheService.put(USER_CACHE_PREFIX + updatedUser.getId(), UserMapper.INSTANCE.toResponse(updatedUser));
 
         return UserMapper.INSTANCE.toResponse(updatedUser);
     }

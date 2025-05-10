@@ -6,6 +6,16 @@ import (
 	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/model"
 )
 
+type Repository interface {
+	WriterRepo
+	NewsRepo
+	NoticeRepo
+	NoticeCache
+	LabelRepo
+
+	Close()
+}
+
 type WriterRepo interface {
 	GetWriter(ctx context.Context, id int64) (model.Writer, error)
 	ListWriters(ctx context.Context) ([]model.Writer, error)
@@ -28,6 +38,12 @@ type NoticeRepo interface {
 	CreateNotice(ctx context.Context, args model.Notice) (model.Notice, error)
 	UpdateNotice(ctx context.Context, args model.Notice) (model.Notice, error)
 	DeleteNotice(ctx context.Context, id int64) error
+}
+
+type NoticeCache interface {
+	UpdateNoticeCache(ctx context.Context, notice model.Notice) error
+	GetNoticeFromCache(ctx context.Context, id int64) (model.Notice, error)
+	DeleteNoticeFromCache(ctx context.Context, id int64) error
 }
 
 type LabelRepo interface {

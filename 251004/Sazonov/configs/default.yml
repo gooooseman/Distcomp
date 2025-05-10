@@ -6,13 +6,21 @@ core:
   shutdown_timeout: 10s
 
 storage:
-  type: postgres
-  user: admin
-  password: admin
+  user: postgres
+  password: postgres
   host: localhost
   port: 5432
-  dbname: mixery
+  dbname: distcomp
   sslmode: disable
+
+redis:
+  db: 0
+  address: localhost:6379
+  user: distcomp
+  password: distcomp
+
+api:
+  notice_addr: localhost:24130
 
 http:
   port: 24110

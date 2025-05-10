@@ -13,18 +13,19 @@ type Writer struct {
 }
 
 type News struct {
-	ID       int64     `db:"id"       json:"id"`
-	WriterID int64     `db:"writerid" json:"writerId"`
-	Title    string    `db:"title"    json:"title"`
-	Content  string    `db:"content"  json:"content"`
-	Created  time.Time `db:"created"  json:"created"`
-	Modified time.Time `db:"modified" json:"modified"`
+	ID       int64     `db:"id"        json:"id"`
+	WriterID int64     `db:"writer_id" json:"writerId"`
+	Title    string    `db:"title"     json:"title"`
+	Content  string    `db:"content"   json:"content"`
+	Labels   []string  `               json:"labels"`
+	Created  time.Time `db:"created"   json:"created"`
+	Modified time.Time `db:"modified"  json:"modified"`
 }
 
 type Notice struct {
-	ID      int64  `db:"id"      json:"id"`
-	NewsID  int64  `db:"newsid"  json:"newsId"`
-	Content string `db:"content" json:"content"`
+	ID      int64  `db:"id"      json:"id,omitempty"      redis:"id"`
+	NewsID  int64  `db:"news_id" json:"newsId,omitempty"  redis:"news_id"`
+	Content string `db:"content" json:"content,omitempty" redis:"content"`
 }
 
 type Label struct {

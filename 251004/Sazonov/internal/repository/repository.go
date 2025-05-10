@@ -4,64 +4,77 @@ import (
 	"context"
 
 	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/config"
-	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/psql"
+	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/psql/label"
+	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/psql/news"
+	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/psql/notice"
+	"github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/psql/writer"
+	noticecache "github.com/Khmelov/Distcomp/251004/Sazonov/internal/repository/redis/notice"
 	"github.com/Khmelov/Distcomp/251004/Sazonov/pkg/postgres"
+	redispkg "github.com/Khmelov/Distcomp/251004/Sazonov/pkg/redis"
 	"github.com/jmoiron/sqlx"
+	"github.com/redis/go-redis/v9"
 )
 
-const (
-	MemoryStorageType string = "memory"
+type repository struct {
+	db     *sqlx.DB
+	client *redis.Client
 
-	PostgresStorageType string = "postgres"
-)
-
-type Repository struct {
-	db *sqlx.DB
-
+	NoticeCache
 	WriterRepo
 	NewsRepo
 	NoticeRepo
 	LabelRepo
 }
 
-func New(cfg config.StorageConfig) (*Repository, error) {
-	var repo Repository
-
-	switch cfg.Type {
-	case MemoryStorageType:
-	case PostgresStorageType:
-		db, err := postgres.Connect(
-			context.Background(),
-			postgres.Config{
-				User:     cfg.User,
-				Password: cfg.Password,
-				Host:     cfg.Host,
-				Port:     cfg.Port,
-				DBName:   cfg.DBName,
-				SSLMode:  cfg.SSLMode,
-			},
-		)
-		if err != nil {
-			return nil, err
-		}
-
-		psqlRepo := psql.New(db)
-
-		repo = Repository{
-			db: db,
-
-			WriterRepo: psqlRepo.Writer(),
-			NewsRepo:   psqlRepo.News(),
-			NoticeRepo: psqlRepo.Notice(),
-			LabelRepo:  psqlRepo.Label(),
-		}
+func New(storageCfg config.StorageConfig, redisCfg config.RedisConfig) (Repository, error) {
+	db, err := postgres.Connect(
+		context.Background(),
+		postgres.Config{
+			User:     storageCfg.User,
+			Password: storageCfg.Password,
+			Host:     storageCfg.Host,
+			Port:     storageCfg.Port,
+			DBName:   storageCfg.DBName,
+			SSLMode:  storageCfg.SSLMode,
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
 
-	return &repo, nil
+	client, err := redispkg.Connect(
+		context.TODO(),
+		redispkg.Config{
+			Addr:     redisCfg.Addr,
+			User:     redisCfg.User,
+			Password: redisCfg.Password,
+			DB:       redisCfg.DB,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	repo := &repository{
+		db:     db,
+		client: client,
+
+		NoticeCache: noticecache.New(client),
+		WriterRepo:  writer.New(db),
+		NewsRepo:    news.New(db),
+		NoticeRepo:  notice.New(db),
+		LabelRepo:   label.New(db),
+	}
+
+	return repo, nil
 }
 
-func (r *Repository) Close() {
+func (r *repository) Close() {
 	if r.db != nil {
 		r.db.Close()
+	}
+
+	if r.client != nil {
+		r.client.Close()
 	}
 }

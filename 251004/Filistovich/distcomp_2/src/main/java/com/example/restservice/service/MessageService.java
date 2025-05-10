@@ -2,26 +2,27 @@ package com.example.restservice.service;
 
 import com.example.restservice.kafka.KafkaMessageProducer;
 import com.example.restservice.model.Message;
+import com.example.restservice.model.MessageEvent;
 import com.example.restservice.model.Status;
 import com.example.restservice.repository.MessageRepository;
 import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import com.example.restservice.model.MessageEvent;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class MessageService {
     private final MessageRepository repository;
     private final KafkaMessageProducer kafkaProducer;
 
-    @Autowired
+    /*@Autowired
     public MessageService(MessageRepository repository, KafkaMessageProducer kafkaProducer) {
         this.repository = repository;
         this.kafkaProducer = kafkaProducer;
-    }
+    }*/
 
     public List<Message> findAll() {
         return repository.findAll();
@@ -34,6 +35,8 @@ public class MessageService {
     public Message save(Message saved) {
         saved.setStatus(Status.PENDING);
         saved = repository.save(saved);
+
+
         kafkaProducer.sendMessage(new MessageEvent(
                 saved.getId(),
                 saved.getNews().getId(),
@@ -58,6 +61,9 @@ public class MessageService {
 
     public Message update(Message message) {
         message.setStatus(Status.PENDING);
+        repository.save(message);
+
+
         kafkaProducer.sendMessage(new MessageEvent(
                 message.getId(),
                 message.getNews().getId(),
@@ -66,7 +72,6 @@ public class MessageService {
                 LocalDateTime.now(),
                 "update"
         ));
-        repository.save(message);
         return message;
     }
 

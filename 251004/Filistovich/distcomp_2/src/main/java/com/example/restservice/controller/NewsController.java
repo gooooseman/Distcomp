@@ -12,7 +12,7 @@ import com.example.restservice.service.AuthorService;
 import com.example.restservice.service.MarkerService;
 import com.example.restservice.service.NewsService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1.0")
+@RequiredArgsConstructor
 public class NewsController {
 
     private final NewsMapper newsMapper;
@@ -40,7 +41,7 @@ public class NewsController {
     private final MarkerService markerService;
     private final MarkerMapper markerMapper;
 
-    @Autowired
+    /*@Autowired
     public NewsController(NewsMapper newsMapper, NewsRepository newsRepository, NewsService newsService, AuthorService authorService, MarkerService markerService, MarkerMapper markerMapper) {
         this.newsMapper = newsMapper;
         this.newsRepository = newsRepository;
@@ -48,7 +49,7 @@ public class NewsController {
         this.authorService = authorService;
         this.markerService = markerService;
         this.markerMapper = markerMapper;
-    }
+    }*/
     
     @GetMapping("/news")
     @ResponseStatus(HttpStatus.OK)

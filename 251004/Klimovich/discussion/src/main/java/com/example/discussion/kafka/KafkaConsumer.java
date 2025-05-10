@@ -23,18 +23,18 @@ public class KafkaConsumer {
         log.info("Received message: {}", message);
         if (message.getRequestType().equals("PUT")){
             MessageResponseTo response = messageService.updateMessage(message.getRequest());
-            //kafkaProducer.sendResponse(new MessageResponseKafka(response,"PUT", "OK"));
+            kafkaProducer.sendResponse(new MessageResponseKafka(response,"PUT", "OK"));
         }
         else if (message.getRequestType().equals("POST")){
             MessageResponseTo response = messageService.createMessage(message.getRequest());
         }
         else if (message.getRequestType().equals("GET")){
             MessageResponseTo response = messageService.getMessageById(message.getRequest().getId());
-            //kafkaProducer.sendResponse(new MessageResponseKafka(response,"GET", "OK"));
+            kafkaProducer.sendResponse(new MessageResponseKafka(response,"GET", "OK"));
         }
         else if (message.getRequestType().equals("DELETE")){
             messageService.deleteMessage(message.getRequest().getId());
-            //kafkaProducer.sendResponse(new MessageResponseKafka(new MessageResponseTo(),"DELETE", "OK"));
+            kafkaProducer.sendResponse(new MessageResponseKafka(new MessageResponseTo(),"DELETE", "OK"));
         }
     }
 }

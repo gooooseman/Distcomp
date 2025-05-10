@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 
 import java.util.Map;
 
@@ -22,7 +23,8 @@ public class KafkaConfig {
         return new DefaultKafkaProducerFactory<>(Map.of(
                 ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092",
                 ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class,
-                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class
+                ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class,
+                JsonSerializer.ADD_TYPE_INFO_HEADERS, false
         ));
     }
 
@@ -34,7 +36,7 @@ public class KafkaConfig {
     @Bean
     public ConsumerFactory<String, MessageRequestKafka> consumerFactory() {
         JsonDeserializer<MessageRequestKafka> deserializer = new JsonDeserializer<>(MessageRequestKafka.class);
-        deserializer.addTrustedPackages("*"); // or your specific package
+        deserializer.addTrustedPackages("*");
 
         return new DefaultKafkaConsumerFactory<>(
                 Map.of(
